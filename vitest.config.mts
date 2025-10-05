@@ -14,14 +14,4 @@ export default defineVitestConfig({
       }
     }
   },
-  resolve: {
-    alias: {
-      // CJS ではなく ESM を明示して選ばせる
-      '@vue/test-utils': '@vue/test-utils/dist/vue-test-utils.mjs',
-    },
-  },
-  // SSR 時に外部化されると Node 側の解決（= CJS 寄り）になりがち
-  ssr: {
-    noExternal: ['@vue/test-utils'],
-  },
 })
