@@ -8,6 +8,7 @@ export interface Todo {
 }
 
 const STORAGE_KEY = 'nuxt4-todos'
+const isBrowser = typeof window !== 'undefined'
 
 type StoredTodos = Todo[]
 
@@ -20,12 +21,12 @@ function createId() {
 }
 
 function readFromStorage(): StoredTodos {
-  if (!process.client) {
+  if (!isBrowser) {
     return []
   }
 
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) {
       return []
     }
@@ -49,18 +50,18 @@ function readFromStorage(): StoredTodos {
 }
 
 function writeToStorage(todos: Todo[]) {
-  if (!process.client) {
+  if (!isBrowser) {
     return
   }
 
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(todos))
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(todos))
 }
 
 export function useTodos() {
   const todos = useState<Todo[]>('todos', () => [])
   const initialized = useState('todos:initialized', () => false)
 
-  if (process.client && !initialized.value) {
+  if (isBrowser && !initialized.value) {
     const stored = readFromStorage()
     if (stored.length > 0) {
       todos.value = stored
@@ -68,7 +69,7 @@ export function useTodos() {
     initialized.value = true
   }
 
-  if (process.client) {
+  if (isBrowser) {
     const watcherRegistered = useState('todos:watcher-registered', () => false)
 
     if (!watcherRegistered.value) {
@@ -124,4 +125,8 @@ export function useTodos() {
     completedCount,
     totalCount: computed(() => todos.value.length)
   }
+}
+
+export const __testing = {
+  STORAGE_KEY
 }
