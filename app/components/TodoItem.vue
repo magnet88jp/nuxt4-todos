@@ -3,8 +3,8 @@
     <UCheckbox
       :model-value="todo.done"
       color="primary"
-      @update:model-value="handleToggle"
       class="flex-1"
+      @update:model-value="handleToggle"
     >
       <template #label>
         <span :class="todo.done ? 'line-through text-gray-400' : ''">
