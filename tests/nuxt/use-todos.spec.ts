@@ -1,99 +1,108 @@
+// tests/nuxt/use-todos.spec.ts（抜粋・差分）
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
-import { renderSuspended, useState } from '@nuxt/test-utils/runtime'
+import { mountSuspended } from '@nuxt/test-utils/runtime'
+import { useState } from '#imports'
 import { __testing, useTodos } from '~/composables/useTodos'
 
 const { STORAGE_KEY } = __testing
+
+async function resetNuxtStates() {
+  await mountSuspended({
+    setup() {
+      useState('todos', () => []).value = []
+      useState('todos:initialized', () => false).value = false
+      useState('todos:watcher-registered', () => false).value = false
+      return {}
+    },
+    template: '<div />',
+  })
+}
 
 describe('useTodos', () => {
   beforeEach(async () => {
     localStorage.clear()
     vi.restoreAllMocks()
-
-    await renderSuspended(() => {
-      useState('todos', () => []).value = []
-      useState('todos:initialized', () => false).value = false
-      useState('todos:watcher-registered', () => false).value = false
-    })
+    await resetNuxtStates()
   })
 
   it('adds a trimmed todo item', async () => {
-    await renderSuspended(() => {
-      const { todos, addTodo } = useTodos()
+    let api!: ReturnType<typeof useTodos>
 
-      addTodo('  Learn Nuxt 4  ')
-
-      expect(todos.value).toHaveLength(1)
-      expect(todos.value[0]).toMatchObject({ title: 'Learn Nuxt 4', done: false })
+    await mountSuspended({
+      setup() {
+        api = useTodos()           // ← ここで外側に捕まえる
+        return {}
+      },
+      template: '<div />',
     })
+
+    api.addTodo('  Learn Nuxt 4  ')
+    expect(api.todos.value).toHaveLength(1)
+    expect(api.todos.value[0]).toMatchObject({ title: 'Learn Nuxt 4', done: false })
   })
 
   it('toggles todo completion state', async () => {
-    await renderSuspended(() => {
-      const { todos, addTodo, toggleTodo } = useTodos()
+    let api!: ReturnType<typeof useTodos>
+    await mountSuspended({ setup(){ api = useTodos(); return {} }, template: '<div />' })
 
-      addTodo('Write tests')
-      const [todo] = todos.value
+    api.addTodo('Write tests')
+    const [todo] = api.todos.value
 
-      toggleTodo(todo.id, true)
-      expect(todos.value[0].done).toBe(true)
+    api.toggleTodo(todo.id, true)
+    expect(api.todos.value[0].done).toBe(true)
 
-      toggleTodo(todo.id)
-      expect(todos.value[0].done).toBe(false)
-    })
+    api.toggleTodo(todo.id)
+    expect(api.todos.value[0].done).toBe(false)
   })
 
   it('removes a todo item', async () => {
-    await renderSuspended(() => {
-      const { todos, addTodo, removeTodo } = useTodos()
+    let api!: ReturnType<typeof useTodos>
+    await mountSuspended({ setup(){ api = useTodos(); return {} }, template: '<div />' })
 
-      addTodo('Cleanup task')
-      const [todo] = todos.value
+    api.addTodo('Cleanup task')
+    const [todo] = api.todos.value
 
-      removeTodo(todo.id)
-      expect(todos.value).toHaveLength(0)
-    })
+    api.removeTodo(todo.id)
+    expect(api.todos.value).toHaveLength(0)
   })
 
   it('clears completed todos', async () => {
-    await renderSuspended(() => {
-      const { todos, addTodo, toggleTodo, clearCompleted } = useTodos()
+    let api!: ReturnType<typeof useTodos>
+    await mountSuspended({ setup(){ api = useTodos(); return {} }, template: '<div />' })
 
-      addTodo('First')
-      addTodo('Second')
-      const [first] = todos.value
+    api.addTodo('First')
+    api.addTodo('Second')
+    const [first] = api.todos.value
 
-      toggleTodo(first.id, true)
-      clearCompleted()
+    api.toggleTodo(first.id, true)
+    api.clearCompleted()
 
-      expect(todos.value).toHaveLength(1)
-      expect(todos.value[0].title).toBe('Second')
-    })
+    expect(api.todos.value).toHaveLength(1)
+    expect(api.todos.value[0].title).toBe('Second')
   })
 
   it('hydrates todos from localStorage on first client access', async () => {
     const stored = [
       { id: '1', title: 'Persisted', done: false },
-      { id: '2', title: 'Finished', done: true }
+      { id: '2', title: 'Finished', done: true },
     ]
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stored))
 
-    await renderSuspended(() => {
-      const { todos, remainingCount, completedCount } = useTodos()
+    let api!: ReturnType<typeof useTodos>
+    await mountSuspended({ setup(){ api = useTodos(); return {} }, template: '<div />' })
 
-      expect(todos.value).toHaveLength(2)
-      expect(remainingCount.value).toBe(1)
-      expect(completedCount.value).toBe(1)
-    })
+    expect(api.todos.value).toHaveLength(2)
+    expect(api.remainingCount.value).toBe(1)
+    expect(api.completedCount.value).toBe(1)
   })
 
   it('persists updates to localStorage', async () => {
-    await renderSuspended(async () => {
-      const { addTodo } = useTodos()
+    let api!: ReturnType<typeof useTodos>
+    await mountSuspended({ setup(){ api = useTodos(); return {} }, template: '<div />' })
 
-      addTodo('Save me')
-      await nextTick()
-    })
+    api.addTodo('Save me')
+    await nextTick()
 
     const persisted = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]')
     expect(persisted).toHaveLength(1)
